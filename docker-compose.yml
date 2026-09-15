@@ -1,0 +1,14 @@
+# Frontend only - habit-backend is a separate deployable with its own
+# docker-compose.yml. Run: docker compose up --build
+name: habit-frontend
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        # Where the standalone backend actually runs. Defaults to the
+        # backend's own docker-compose port.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "8081:80"

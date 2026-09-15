@@ -1,0 +1,75 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test
+      # Ingen VITE_API_BASE_URL: bygget kaller /v1 relativt, og Apache på
+      # habit.roseweb.no proxier /v1 videre til habit-backend.
+      - run: npm run build
+
+      - name: Upload dist
+        if: github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@v4
+        with:
+          name: habit-frontend-dist
+          path: dist/
+          retention-days: 1
+
+  docker-build:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    needs: verify
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t habit-frontend .
+
+  deploy:
+    name: Deploy to roseweb.no
+    needs: verify
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: habit-frontend-dist
+          path: dist
+
+      - name: Deploy to server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+          SSH="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no"
+
+          # roseweb.no har ikke rsync - tøm målmappa og scp inn det nye bygget,
+          # så gamle hash-navngitte assets ikke blir liggende igjen.
+          $SSH "$SSH_USER@$SSH_HOST" "find /var/www/habit -mindepth 1 -delete"
+          scp -i /tmp/deploy_key -o StrictHostKeyChecking=no -r \
+            dist/* "$SSH_USER@$SSH_HOST:/var/www/habit/"
