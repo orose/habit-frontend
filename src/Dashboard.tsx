@@ -2,13 +2,12 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { Box, Button, Checkbox, IconButton } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import TrackChangesRoundedIcon from "@mui/icons-material/TrackChangesRounded";
 import { useAuth } from "./auth/useAuth";
+import { useRefreshOnVisible } from "./useRefreshOnVisible";
 import { checkIn, undoCheckIn } from "./api/checkins";
-import { createHabit, deleteHabit, listHabits, updateHabit, type Habit, type HabitRequest } from "./api/habits";
+import { createHabit, listHabits, type Habit, type HabitRequest } from "./api/habits";
 import { fetchAllStats, type HabitStats } from "./api/stats";
 import { AppDialog, EmptyState, ListRow, PageHeader, PageLayout, StreakBadge } from "./components";
 import HabitForm from "./HabitForm";
@@ -24,7 +23,6 @@ export default function Dashboard() {
   const [statsByHabitId, setStatsByHabitId] = useState<Map<number, HabitStats>>(new Map());
   const [loading, setLoading] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
-  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -57,6 +55,8 @@ export default function Dashboard() {
     setStatsByHabitId(new Map(stats.map((s) => [s.habitId, s])));
   }
 
+  useRefreshOnVisible(load);
+
   async function handleToggleToday(habit: Habit) {
     if (!token) {
       return;
@@ -77,26 +77,6 @@ export default function Dashboard() {
     }
     await createHabit(token, request);
     setFormOpen(false);
-    await load();
-  }
-
-  async function handleUpdate(request: HabitRequest) {
-    if (!token || !editingHabit) {
-      return;
-    }
-    await updateHabit(token, editingHabit.id, request);
-    setEditingHabit(null);
-    await load();
-  }
-
-  async function handleDelete(habit: Habit) {
-    if (!token) {
-      return;
-    }
-    if (!window.confirm(`Slette vanen "${habit.name}"? Dette kan ikke angres.`)) {
-      return;
-    }
-    await deleteHabit(token, habit.id);
     await load();
   }
 
@@ -136,17 +116,7 @@ export default function Dashboard() {
             }
             primary={habit.name}
             secondary={habit.description}
-            actions={
-              <Box onClick={stopRowClick} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <StreakBadge streak={stats?.currentStreak ?? 0} />
-                <IconButton aria-label="Rediger" onClick={() => setEditingHabit(habit)}>
-                  <EditOutlinedIcon fontSize="small" />
-                </IconButton>
-                <IconButton aria-label="Slett" onClick={() => handleDelete(habit)}>
-                  <DeleteOutlineRoundedIcon fontSize="small" />
-                </IconButton>
-              </Box>
-            }
+            actions={<StreakBadge streak={stats?.currentStreak ?? 0} />}
           />
         );
       })}
@@ -157,16 +127,6 @@ export default function Dashboard() {
 
       <AppDialog open={formOpen} title="Ny vane" onClose={() => setFormOpen(false)}>
         <HabitForm onSubmit={handleCreate} onCancel={() => setFormOpen(false)} />
-      </AppDialog>
-
-      <AppDialog open={editingHabit !== null} title="Rediger vane" onClose={() => setEditingHabit(null)}>
-        {editingHabit && (
-          <HabitForm
-            initial={{ name: editingHabit.name, description: editingHabit.description }}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditingHabit(null)}
-          />
-        )}
       </AppDialog>
     </PageLayout>
   );

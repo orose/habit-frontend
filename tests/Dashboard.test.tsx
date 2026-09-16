@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import Dashboard from "../src/Dashboard";
 import { AuthProvider } from "../src/auth/AuthContext";
 
@@ -54,13 +54,10 @@ function mockBackend(habits: unknown[], stats: unknown[]) {
 }
 
 describe("Dashboard", () => {
-  beforeEach(() => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-  });
-
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
   });
 
   it("shows an empty state when there are no habits", async () => {
@@ -120,5 +117,53 @@ describe("Dashboard", () => {
     await user.click(checkbox);
 
     expect(screen.queryByText("Vanedetaljer")).not.toBeInTheDocument();
+  });
+
+  it("does not show edit or delete buttons on the list", async () => {
+    mockBackend(
+      [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
+      [{ habitId: 1, name: "Drikke vann", currentStreak: 0, longestStreak: 0, totalCheckins: 0, completedToday: false }],
+    );
+    renderDashboard();
+
+    await screen.findByText("Drikke vann");
+    expect(screen.queryByRole("button", { name: "Rediger" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Slett" })).not.toBeInTheDocument();
+  });
+
+  it("refetches habits and stats when the app becomes visible again", async () => {
+    let statsCallCount = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "/v1/habits") {
+          return {
+            ok: true,
+            json: async () => [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
+          };
+        }
+        if (url === "/v1/stats") {
+          statsCallCount += 1;
+          const completedToday = statsCallCount === 1;
+          return {
+            ok: true,
+            json: async () => [
+              { habitId: 1, name: "Drikke vann", currentStreak: 3, longestStreak: 5, totalCheckins: 10, completedToday },
+            ],
+          };
+        }
+        throw new Error(`Unexpected fetch: ${url}`);
+      }),
+    );
+    renderDashboard();
+
+    const checkbox = await screen.findByRole("checkbox");
+    await waitFor(() => expect(checkbox).toBeChecked());
+
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    await waitFor(() => expect(checkbox).not.toBeChecked());
   });
 });
