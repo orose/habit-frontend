@@ -11,6 +11,7 @@ export default function StreakBadge({ streak, size = "md" }: Props) {
   const big = size === "lg";
   return (
     <Box
+      data-testid="streak-badge"
       sx={(t) => ({
         display: "inline-flex",
         alignItems: "center",

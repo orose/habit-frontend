@@ -4,7 +4,7 @@ import { useAuth } from "./auth/useAuth";
 import { listCheckins } from "./api/checkins";
 import { listHabits, type Habit } from "./api/habits";
 import { fetchAllStats, type HabitStats } from "./api/stats";
-import { EmptyState, HabitContributionGraph, PageHeader, PageLayout, StreakBadge } from "./components";
+import { EmptyState, HabitCalendar, PageHeader, PageLayout, StreakBadge } from "./components";
 
 export function HabitDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -60,7 +60,7 @@ export function HabitDetailPage() {
   return (
     <PageLayout>
       <PageHeader title={habit.name} onBack={goBack} action={<StreakBadge streak={stats?.currentStreak ?? 0} />} />
-      <HabitContributionGraph checkins={checkinDates} createdAt={habit.createdAt} />
+      <HabitCalendar checkins={checkinDates} createdAt={habit.createdAt} />
     </PageLayout>
   );
 }

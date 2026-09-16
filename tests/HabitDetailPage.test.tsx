@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HabitDetailPage } from "../src/HabitDetailPage";
@@ -63,10 +63,10 @@ describe("HabitDetailPage", () => {
     renderDetailPage("1");
 
     expect(await screen.findByRole("heading", { name: "Drikke vann" })).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(within(screen.getByTestId("streak-badge")).getByText("3")).toBeInTheDocument();
   });
 
-  it("renders the contribution graph once the checkins have loaded", async () => {
+  it("renders the calendar once the checkins have loaded", async () => {
     mockBackend({
       habits: [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
       stats: [
@@ -77,7 +77,7 @@ describe("HabitDetailPage", () => {
 
     renderDetailPage("1");
 
-    expect((await screen.findAllByTestId("contribution-day")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByRole("gridcell")).length).toBeGreaterThan(0);
   });
 
   it("shows a not-found message for an unknown habit id", async () => {
