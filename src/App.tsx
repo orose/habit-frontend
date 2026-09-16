@@ -1,13 +1,23 @@
 import { CssBaseline, ThemeProvider } from "@mui/material";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { useAppTheme } from "./useAppTheme";
 import { AuthProvider } from "./auth/AuthContext";
 import { useAuth } from "./auth/useAuth";
 import LoginScreen from "./LoginScreen";
 import Dashboard from "./Dashboard";
+import { HabitDetailPage } from "./HabitDetailPage";
 
 function AppShell() {
   const { token } = useAuth();
-  return token ? <Dashboard /> : <LoginScreen />;
+  if (!token) {
+    return <LoginScreen />;
+  }
+  return (
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/habits/:id" element={<HabitDetailPage />} />
+    </Routes>
+  );
 }
 
 export default function App() {
@@ -17,7 +27,9 @@ export default function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <AppShell />
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   );

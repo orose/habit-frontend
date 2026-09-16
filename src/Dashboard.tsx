@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { Button, Checkbox, IconButton } from "@mui/material";
+import { useEffect, useState, type MouseEvent } from "react";
+import { Box, Button, Checkbox, IconButton } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
@@ -12,8 +13,13 @@ import { fetchAllStats, type HabitStats } from "./api/stats";
 import { AppDialog, EmptyState, ListRow, PageHeader, PageLayout, StreakBadge } from "./components";
 import HabitForm from "./HabitForm";
 
+function stopRowClick(event: MouseEvent) {
+  event.stopPropagation();
+}
+
 export default function Dashboard() {
   const { token, logout } = useAuth();
+  const navigate = useNavigate();
   const [habits, setHabits] = useState<Habit[]>([]);
   const [statsByHabitId, setStatsByHabitId] = useState<Map<number, HabitStats>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -118,17 +124,20 @@ export default function Dashboard() {
         return (
           <ListRow
             key={habit.id}
+            onClick={() => navigate(`/habits/${habit.id}`)}
             avatar={
-              <Checkbox
-                checked={stats?.completedToday ?? false}
-                onChange={() => handleToggleToday(habit)}
-                aria-label={`Kryss av "${habit.name}" for i dag`}
-              />
+              <Box onClick={stopRowClick}>
+                <Checkbox
+                  checked={stats?.completedToday ?? false}
+                  onChange={() => handleToggleToday(habit)}
+                  aria-label={`Kryss av "${habit.name}" for i dag`}
+                />
+              </Box>
             }
             primary={habit.name}
             secondary={habit.description}
             actions={
-              <>
+              <Box onClick={stopRowClick} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <StreakBadge streak={stats?.currentStreak ?? 0} />
                 <IconButton aria-label="Rediger" onClick={() => setEditingHabit(habit)}>
                   <EditOutlinedIcon fontSize="small" />
@@ -136,7 +145,7 @@ export default function Dashboard() {
                 <IconButton aria-label="Slett" onClick={() => handleDelete(habit)}>
                   <DeleteOutlineRoundedIcon fontSize="small" />
                 </IconButton>
-              </>
+              </Box>
             }
           />
         );

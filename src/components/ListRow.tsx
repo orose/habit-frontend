@@ -28,6 +28,12 @@ export default function ListRow({ avatar, primary, secondary, actions, onClick }
       onKeyDown={
         onClick
           ? (event) => {
+              // Ignore key events bubbling up from a nested interactive
+              // element (checkbox, icon button) - only the row itself
+              // should navigate on Enter/Space.
+              if (event.target !== event.currentTarget) {
+                return;
+              }
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 onClick();

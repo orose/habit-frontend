@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Dashboard from "../src/Dashboard";
 import { AuthProvider } from "../src/auth/AuthContext";
@@ -10,7 +11,23 @@ function renderDashboard() {
   localStorage.setItem(TOKEN_STORAGE_KEY, "the-jwt");
   return render(
     <AuthProvider>
-      <Dashboard />
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    </AuthProvider>,
+  );
+}
+
+function renderDashboardWithDetailRoute() {
+  localStorage.setItem(TOKEN_STORAGE_KEY, "the-jwt");
+  return render(
+    <AuthProvider>
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/habits/:id" element={<div>Vanedetaljer</div>} />
+        </Routes>
+      </MemoryRouter>
     </AuthProvider>,
   );
 }
@@ -76,5 +93,32 @@ describe("Dashboard", () => {
     await user.click(checkbox);
 
     expect(fetch).toHaveBeenCalledWith("/v1/habits/1/checkins", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("navigates to the habit's detail page when its row is clicked", async () => {
+    mockBackend(
+      [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
+      [{ habitId: 1, name: "Drikke vann", currentStreak: 0, longestStreak: 0, totalCheckins: 0, completedToday: false }],
+    );
+    const user = userEvent.setup();
+    renderDashboardWithDetailRoute();
+
+    await user.click(await screen.findByText("Drikke vann"));
+
+    expect(await screen.findByText("Vanedetaljer")).toBeInTheDocument();
+  });
+
+  it("does not navigate away when the checkbox is clicked", async () => {
+    mockBackend(
+      [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
+      [{ habitId: 1, name: "Drikke vann", currentStreak: 0, longestStreak: 0, totalCheckins: 0, completedToday: false }],
+    );
+    const user = userEvent.setup();
+    renderDashboardWithDetailRoute();
+
+    const checkbox = await screen.findByRole("checkbox");
+    await user.click(checkbox);
+
+    expect(screen.queryByText("Vanedetaljer")).not.toBeInTheDocument();
   });
 });
