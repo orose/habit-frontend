@@ -1,5 +1,5 @@
 import { useEffect, useState, type MouseEvent } from "react";
-import { Box, Button, Checkbox, IconButton } from "@mui/material";
+import { Box, Button, IconButton } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
@@ -9,7 +9,7 @@ import { useRefreshOnVisible } from "./useRefreshOnVisible";
 import { checkIn, undoCheckIn } from "./api/checkins";
 import { createHabit, listHabits, type Habit, type HabitRequest } from "./api/habits";
 import { fetchAllStats, type HabitStats } from "./api/stats";
-import { AppDialog, EmptyState, ListRow, PageHeader, PageLayout, StreakBadge } from "./components";
+import { AppDialog, EmptyState, HabitCompletionToggle, ListRow, PageHeader, PageLayout, StreakBadge } from "./components";
 import HabitForm from "./HabitForm";
 
 function stopRowClick(event: MouseEvent) {
@@ -107,10 +107,10 @@ export default function Dashboard() {
             onClick={() => navigate(`/habits/${habit.id}`)}
             avatar={
               <Box onClick={stopRowClick}>
-                <Checkbox
-                  checked={stats?.completedToday ?? false}
-                  onChange={() => handleToggleToday(habit)}
-                  aria-label={`Kryss av "${habit.name}" for i dag`}
+                <HabitCompletionToggle
+                  completed={stats?.completedToday ?? false}
+                  onToggle={() => handleToggleToday(habit)}
+                  habitName={habit.name}
                 />
               </Box>
             }

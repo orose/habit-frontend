@@ -78,7 +78,7 @@ describe("Dashboard", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
-  it("checks a habit in for today when its checkbox is clicked", async () => {
+  it("checks a habit in for today when its toggle is clicked", async () => {
     mockBackend(
       [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
       [{ habitId: 1, name: "Drikke vann", currentStreak: 0, longestStreak: 0, totalCheckins: 0, completedToday: false }],
@@ -86,8 +86,8 @@ describe("Dashboard", () => {
     const user = userEvent.setup();
     renderDashboard();
 
-    const checkbox = await screen.findByRole("checkbox");
-    await user.click(checkbox);
+    const toggle = await screen.findByTestId("habit-toggle");
+    await user.click(toggle);
 
     expect(fetch).toHaveBeenCalledWith("/v1/habits/1/checkins", expect.objectContaining({ method: "POST" }));
   });
@@ -105,7 +105,7 @@ describe("Dashboard", () => {
     expect(await screen.findByText("Vanedetaljer")).toBeInTheDocument();
   });
 
-  it("does not navigate away when the checkbox is clicked", async () => {
+  it("does not navigate away when the toggle is clicked", async () => {
     mockBackend(
       [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
       [{ habitId: 1, name: "Drikke vann", currentStreak: 0, longestStreak: 0, totalCheckins: 0, completedToday: false }],
@@ -113,8 +113,8 @@ describe("Dashboard", () => {
     const user = userEvent.setup();
     renderDashboardWithDetailRoute();
 
-    const checkbox = await screen.findByRole("checkbox");
-    await user.click(checkbox);
+    const toggle = await screen.findByTestId("habit-toggle");
+    await user.click(toggle);
 
     expect(screen.queryByText("Vanedetaljer")).not.toBeInTheDocument();
   });
@@ -158,12 +158,12 @@ describe("Dashboard", () => {
     );
     renderDashboard();
 
-    const checkbox = await screen.findByRole("checkbox");
-    await waitFor(() => expect(checkbox).toBeChecked());
+    const toggle = await screen.findByTestId("habit-toggle");
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-pressed", "true"));
 
     Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
 
-    await waitFor(() => expect(checkbox).not.toBeChecked());
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-pressed", "false"));
   });
 });
