@@ -78,6 +78,26 @@ describe("Dashboard", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
+  it("sorts habits by current streak in descending order", async () => {
+    mockBackend(
+      [
+        { id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" },
+        { id: 2, userId: 1, name: "Meditere", description: null, createdAt: "2026-01-01 00:00:00" },
+        { id: 3, userId: 1, name: "Lese", description: null, createdAt: "2026-01-01 00:00:00" },
+      ],
+      [
+        { habitId: 1, name: "Drikke vann", currentStreak: 2, longestStreak: 5, totalCheckins: 10, completedToday: false },
+        { habitId: 2, name: "Meditere", currentStreak: 9, longestStreak: 9, totalCheckins: 9, completedToday: false },
+        { habitId: 3, name: "Lese", currentStreak: 5, longestStreak: 5, totalCheckins: 5, completedToday: false },
+      ],
+    );
+    renderDashboard();
+    await screen.findByText("Drikke vann");
+
+    const names = screen.getAllByText(/^(Drikke vann|Meditere|Lese)$/).map((el) => el.textContent);
+    expect(names).toEqual(["Meditere", "Lese", "Drikke vann"]);
+  });
+
   it("checks a habit in for today when its toggle is clicked", async () => {
     mockBackend(
       [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],

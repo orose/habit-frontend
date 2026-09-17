@@ -16,6 +16,12 @@ function stopRowClick(event: MouseEvent) {
   event.stopPropagation();
 }
 
+function sortByStreakDescending(habits: Habit[], statsByHabitId: Map<number, HabitStats>): Habit[] {
+  return [...habits].sort(
+    (a, b) => (statsByHabitId.get(b.id)?.currentStreak ?? 0) - (statsByHabitId.get(a.id)?.currentStreak ?? 0),
+  );
+}
+
 export default function Dashboard() {
   const { token, logout } = useAuth();
   const navigate = useNavigate();
@@ -99,7 +105,7 @@ export default function Dashboard() {
         />
       )}
 
-      {habits.map((habit) => {
+      {sortByStreakDescending(habits, statsByHabitId).map((habit) => {
         const stats = statsByHabitId.get(habit.id);
         return (
           <ListRow
