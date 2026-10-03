@@ -5,6 +5,10 @@ export interface HabitStats {
   name: string;
   currentStreak: number;
   longestStreak: number;
+  /** ISO date (`yyyy-MM-dd`) the longest streak began; null without check-ins. Ties go to the most recent streak. */
+  longestStreakStart: string | null;
+  /** ISO date of the longest streak's last checked-off day; null without check-ins. */
+  longestStreakEnd: string | null;
   totalCheckins: number;
   completedToday: boolean;
 }

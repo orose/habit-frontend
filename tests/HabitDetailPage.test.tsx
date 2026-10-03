@@ -81,6 +81,76 @@ describe("HabitDetailPage", () => {
     expect((await screen.findAllByRole("gridcell")).length).toBeGreaterThan(0);
   });
 
+  it("shows the record streak and its period", async () => {
+    mockBackend({
+      habits: [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
+      stats: [
+        {
+          habitId: 1,
+          name: "Drikke vann",
+          currentStreak: 1,
+          longestStreak: 12,
+          longestStreakStart: "2026-03-03",
+          longestStreakEnd: "2026-03-14",
+          totalCheckins: 20,
+          completedToday: true,
+        },
+      ],
+      checkins: [],
+    });
+
+    renderDetailPage("1");
+
+    expect(await screen.findByText("Rekord: 12 dager · 3.–14. mars 2026")).toBeInTheDocument();
+  });
+
+  it("marks the record as ongoing when the current streak is the record", async () => {
+    mockBackend({
+      habits: [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
+      stats: [
+        {
+          habitId: 1,
+          name: "Drikke vann",
+          currentStreak: 3,
+          longestStreak: 3,
+          longestStreakStart: "2026-10-01",
+          longestStreakEnd: "2026-10-03",
+          totalCheckins: 3,
+          completedToday: true,
+        },
+      ],
+      checkins: [],
+    });
+
+    renderDetailPage("1");
+
+    expect(await screen.findByText("Rekord: 3 dager · 1.–3. okt. 2026 · pågår")).toBeInTheDocument();
+  });
+
+  it("does not show a record line for a habit with no checkins", async () => {
+    mockBackend({
+      habits: [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
+      stats: [
+        {
+          habitId: 1,
+          name: "Drikke vann",
+          currentStreak: 0,
+          longestStreak: 0,
+          longestStreakStart: null,
+          longestStreakEnd: null,
+          totalCheckins: 0,
+          completedToday: false,
+        },
+      ],
+      checkins: [],
+    });
+
+    renderDetailPage("1");
+
+    await screen.findByRole("heading", { name: "Drikke vann" });
+    expect(screen.queryByTestId("longest-streak")).not.toBeInTheDocument();
+  });
+
   it("shows a not-found message for an unknown habit id", async () => {
     mockBackend({ habits: [], stats: [], checkins: [] });
 
