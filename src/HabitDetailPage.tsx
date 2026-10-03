@@ -8,7 +8,15 @@ import { useRefreshOnVisible } from "./useRefreshOnVisible";
 import { listCheckins } from "./api/checkins";
 import { deleteHabit, listHabits, updateHabit, type Habit, type HabitRequest } from "./api/habits";
 import { fetchAllStats, type HabitStats } from "./api/stats";
-import { AppDialog, EmptyState, HabitCalendar, PageHeader, PageLayout, StreakBadge } from "./components";
+import {
+  AppDialog,
+  EmptyState,
+  HabitCalendar,
+  LongestStreak,
+  PageHeader,
+  PageLayout,
+  StreakBadge,
+} from "./components";
 import HabitForm from "./HabitForm";
 
 export function HabitDetailPage() {
@@ -121,6 +129,7 @@ export function HabitDetailPage() {
           {habit.description}
         </Typography>
       )}
+      {stats && <LongestStreak stats={stats} />}
       <HabitCalendar checkins={checkinDates} createdAt={habit.createdAt} />
 
       <AppDialog open={editOpen} title="Rediger vane" onClose={() => setEditOpen(false)}>
