@@ -1,9 +1,10 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HabitDetailPage } from "../src/HabitDetailPage";
 import { AuthProvider } from "../src/auth/AuthContext";
+import { toIsoDate, yesterdayOf } from "../src/components/HabitCalendar.helpers";
 
 const TOKEN_STORAGE_KEY = "habit.auth.token";
 
@@ -45,6 +46,47 @@ function mockBackend({
       throw new Error(`Unexpected fetch: ${url}`);
     }),
   );
+}
+
+const YESTERDAY = toIsoDate(yesterdayOf(new Date()));
+
+/** A backend whose POST /checkins responds with `postStatus`, recording the check-ins it accepts. */
+function mockBackendWithCheckIn({ checkins, postStatus = 201 }: { checkins: string[]; postStatus?: number }) {
+  const posted: unknown[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      const method = init?.method ?? "GET";
+      if (url === "/v1/habits") {
+        return {
+          ok: true,
+          json: async () => [{ id: 1, userId: 1, name: "Drikke vann", description: null, createdAt: "2026-01-01 00:00:00" }],
+        };
+      }
+      if (url === "/v1/stats") {
+        return {
+          ok: true,
+          json: async () => [
+            { habitId: 1, name: "Drikke vann", currentStreak: 0, longestStreak: 0, totalCheckins: 0, completedToday: false },
+          ],
+        };
+      }
+      if (url === "/v1/habits/1/checkins" && method === "POST") {
+        const body = JSON.parse(init?.body as string) as { date: string };
+        posted.push(body);
+        if (postStatus === 201 || postStatus === 409) {
+          checkins.push(body.date);
+        }
+        return { ok: postStatus < 400, status: postStatus, json: async () => ({ id: 99, habitId: 1, date: body.date }) };
+      }
+      if (url === "/v1/habits/1/checkins") {
+        return { ok: true, json: async () => checkins.map((date, i) => ({ id: i + 1, habitId: 1, date })) };
+      }
+      throw new Error(`Unexpected fetch: ${method} ${url}`);
+    }),
+  );
+  return { posted };
 }
 
 describe("HabitDetailPage", () => {
@@ -289,5 +331,57 @@ describe("HabitDetailPage", () => {
     await user.click(await screen.findByRole("button", { name: "Slett" }));
 
     expect(await screen.findByText("Dashbord")).toBeInTheDocument();
+  });
+
+  describe("check in for yesterday", () => {
+    it("checks the habit in for yesterday and hides the button afterwards", async () => {
+      const user = userEvent.setup();
+      const { posted } = mockBackendWithCheckIn({ checkins: [] });
+
+      renderDetailPage("1");
+
+      await user.click(await screen.findByRole("button", { name: "Kryss av for i går" }));
+
+      expect(posted).toEqual([{ date: YESTERDAY }]);
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Kryss av for i går" })).not.toBeInTheDocument(),
+      );
+    });
+
+    it("does not show the button when yesterday is already checked in", async () => {
+      mockBackendWithCheckIn({ checkins: [YESTERDAY] });
+
+      renderDetailPage("1");
+
+      await screen.findAllByRole("gridcell");
+      expect(screen.queryByRole("button", { name: "Kryss av for i går" })).not.toBeInTheDocument();
+    });
+
+    it("treats an already-checked-in conflict (409) as success", async () => {
+      const user = userEvent.setup();
+      mockBackendWithCheckIn({ checkins: [], postStatus: 409 });
+
+      renderDetailPage("1");
+
+      await user.click(await screen.findByRole("button", { name: "Kryss av for i går" }));
+
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Kryss av for i går" })).not.toBeInTheDocument(),
+      );
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("shows an error and keeps the button enabled when the check-in fails", async () => {
+      const user = userEvent.setup();
+      mockBackendWithCheckIn({ checkins: [], postStatus: 500 });
+
+      renderDetailPage("1");
+
+      const button = await screen.findByRole("button", { name: "Kryss av for i går" });
+      await user.click(button);
+
+      expect(await screen.findByText("Kunne ikke krysse av for i går. Prøv igjen.")).toBeInTheDocument();
+      expect(button).toBeEnabled();
+    });
   });
 });

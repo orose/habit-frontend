@@ -27,3 +27,18 @@ export function dayStatus(date: Date, doneDates: ReadonlySet<string>, createdDat
   }
   return doneDates.has(toIsoDate(date)) ? "done" : "not-done";
 }
+
+/** The local calendar day before `today`. */
+export function yesterdayOf(today: Date): Date {
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+}
+
+/**
+ * Whether yesterday can still be checked off: the habit existed then and it
+ * isn't already done. Mirrors the calendar's "not-done" status for that day,
+ * so the button and the calendar never disagree.
+ */
+export function canCheckInYesterday(doneDates: ReadonlySet<string>, createdDate: Date, today: Date): boolean {
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return dayStatus(yesterdayOf(today), doneDates, createdDate, startOfToday) === "not-done";
+}

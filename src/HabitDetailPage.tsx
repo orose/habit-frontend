@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { IconButton, Stack, Typography } from "@mui/material";
+import { Alert, Button, IconButton, Stack, Typography } from "@mui/material";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { useAuth } from "./auth/useAuth";
 import { useRefreshOnVisible } from "./useRefreshOnVisible";
-import { listCheckins } from "./api/checkins";
+import { checkIn, CheckinRequestError, listCheckins } from "./api/checkins";
 import { deleteHabit, listHabits, updateHabit, type Habit, type HabitRequest } from "./api/habits";
 import { fetchAllStats, type HabitStats } from "./api/stats";
 import {
@@ -17,6 +18,7 @@ import {
   PageLayout,
   StreakBadge,
 } from "./components";
+import { canCheckInYesterday, parseIsoDate, toIsoDate, yesterdayOf } from "./components/HabitCalendar.helpers";
 import HabitForm from "./HabitForm";
 
 export function HabitDetailPage() {
@@ -26,8 +28,11 @@ export function HabitDetailPage() {
   const { token } = useAuth();
   const [habit, setHabit] = useState<Habit | null | undefined>(undefined);
   const [stats, setStats] = useState<HabitStats | undefined>(undefined);
-  const [checkinDates, setCheckinDates] = useState<string[]>([]);
+  // undefined until loaded, so the yesterday button doesn't flash before we know it's already done
+  const [checkinDates, setCheckinDates] = useState<string[] | undefined>(undefined);
   const [editOpen, setEditOpen] = useState(false);
+  const [checkingInYesterday, setCheckingInYesterday] = useState(false);
+  const [yesterdayError, setYesterdayError] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -83,6 +88,27 @@ export function HabitDetailPage() {
     await load();
   }
 
+  async function handleCheckInYesterday() {
+    if (!token || !habit) {
+      return;
+    }
+    setCheckingInYesterday(true);
+    setYesterdayError(false);
+    try {
+      await checkIn(token, habit.id, toIsoDate(yesterdayOf(new Date())));
+      await load();
+    } catch (error) {
+      // 409 means yesterday is already checked in (e.g. from another device) - the goal is met.
+      if (error instanceof CheckinRequestError && error.status === 409) {
+        await load();
+      } else {
+        setYesterdayError(true);
+      }
+    } finally {
+      setCheckingInYesterday(false);
+    }
+  }
+
   async function handleDelete() {
     if (!token || !habit) {
       return;
@@ -130,7 +156,20 @@ export function HabitDetailPage() {
         </Typography>
       )}
       {stats && <LongestStreak stats={stats} />}
-      <HabitCalendar checkins={checkinDates} createdAt={habit.createdAt} />
+      {checkinDates && canCheckInYesterday(new Set(checkinDates), parseIsoDate(habit.createdAt), new Date()) && (
+        <Stack spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<CheckRoundedIcon />}
+            onClick={handleCheckInYesterday}
+            disabled={checkingInYesterday}
+          >
+            Kryss av for i går
+          </Button>
+          {yesterdayError && <Alert severity="error">Kunne ikke krysse av for i går. Prøv igjen.</Alert>}
+        </Stack>
+      )}
+      <HabitCalendar checkins={checkinDates ?? []} createdAt={habit.createdAt} />
 
       <AppDialog open={editOpen} title="Rediger vane" onClose={() => setEditOpen(false)}>
         <HabitForm

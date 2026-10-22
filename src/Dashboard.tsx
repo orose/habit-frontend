@@ -10,6 +10,7 @@ import { checkIn, undoCheckIn } from "./api/checkins";
 import { createHabit, listHabits, type Habit, type HabitRequest } from "./api/habits";
 import { fetchAllStats, type HabitStats } from "./api/stats";
 import { AppDialog, EmptyState, HabitCompletionToggle, ListRow, PageHeader, PageLayout, StreakBadge } from "./components";
+import { toIsoDate } from "./components/HabitCalendar.helpers";
 import HabitForm from "./HabitForm";
 
 function stopRowClick(event: MouseEvent) {
@@ -68,7 +69,7 @@ export default function Dashboard() {
       return;
     }
     const stats = statsByHabitId.get(habit.id);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toIsoDate(new Date());
     if (stats?.completedToday) {
       await undoCheckIn(token, habit.id, today);
     } else {

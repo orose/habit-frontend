@@ -10,9 +10,20 @@ function authHeaders(token: string): HeadersInit {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
+/** A failed checkins request, carrying the HTTP status (e.g. 409 when the day is already checked in). */
+export class CheckinRequestError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`Forespørselen mot /v1/habits/.../checkins feilet (${status})`);
+    this.name = "CheckinRequestError";
+    this.status = status;
+  }
+}
+
 async function throwIfNotOk(response: Response): Promise<void> {
   if (!response.ok) {
-    throw new Error(`Forespørselen mot /v1/habits/.../checkins feilet (${response.status})`);
+    throw new CheckinRequestError(response.status);
   }
 }
 
